@@ -580,8 +580,10 @@ function topPos(listId) { const cs = cardsIn(listId); return cs.length ? cs[0].p
 const CACHE_KEY = "activity-tracker-v1";
 function loadCache() { try { const raw = localStorage.getItem(CACHE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; } }
 let cacheTimer = null;
-function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(S)); } catch {} }
-function saveCacheSoon() { clearTimeout(cacheTimer); cacheTimer = setTimeout(saveCache, 300); }
+const MOD_KEY = "cardeo-modified";
+function saveCache(ts) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(S)); localStorage.setItem(MOD_KEY, String(ts || now())); } catch {} }
+function localModified() { try { return Number(localStorage.getItem(MOD_KEY) || 0); } catch { return 0; } }
+function saveCacheSoon() { clearTimeout(cacheTimer); cacheTimer = setTimeout(() => saveCache(), 300); }
 
 const Store = {
   mode: "local", uid: null, refs: null, assets: null,
@@ -589,6 +591,7 @@ const Store = {
   mark(key, op = "set") { this.dirty.set(key, op); this.schedule(); },
   schedule() {
     saveCacheSoon();
+    if (typeof Sheet !== "undefined") Sheet.schedule();
     clearTimeout(this.timer);
     if (this.mode === "remote") { setSync("Saving"); this.timer = setTimeout(() => this.flush(), 450); }
     else { this.dirty.clear(); setSync(); }
@@ -634,6 +637,7 @@ const Store = {
 };
 function setSync(state) {
   const el = $("#sync"); if (!el) return;
+  if (typeof Sheet !== "undefined" && Sheet.cfg) { el.textContent = Sheet.label(); el.title = Sheet.error || ""; return; }
   if (Store.mode === "remote") el.textContent = state === "Saving" ? "Saving…" : "All changes saved";
   else el.textContent = Store.connecting ? "Connecting…" : "Saved in this browser";
 }
@@ -1108,6 +1112,7 @@ function openBoardMenu(anchor) {
       })),
       popItem("tag", "Labels", "Create and group labels", () => Pop.push("Labels", bb => labelsView(bb, null))),
       popItem("field", "Custom fields", "Extra fields on every card", () => Pop.push("Custom fields", bb => customFieldsView(bb, null))),
+      popItem("table", "Google Sheet sync", Sheet.cfg ? Sheet.label() : "Save all cards to your own Google Sheet", () => Pop.push("Google Sheet sync", sheetView), {on: !!Sheet.cfg}),
       popItem("archive", "Archived items", null, () => { Pop.close(); openDrawer("archive"); }),
       popItem("eye", S.meta.colorblind ? "Turn off colourblind friendly labels" : "Colourblind friendly labels", "Adds patterns to label colours", () => { S.meta.colorblind = !S.meta.colorblind; saveMeta(); applyTheme(); Pop.refresh(); }, {on: S.meta.colorblind}),
       h("div", {class: "pop-div"}),
@@ -2466,6 +2471,114 @@ function initSearch() {
   });
 }
 
+/* ================= Google Sheet sync and backup ================= */
+const SHEET_CFG = "cardeo-sheet";
+const Sheet = {
+  cfg: null, timer: null, busy: false, again: false, state: "idle", error: "", lastSaved: 0,
+  init() { try { this.cfg = JSON.parse(localStorage.getItem(SHEET_CFG) || "null"); } catch { this.cfg = null; } try { this.lastSaved = Number(localStorage.getItem(SHEET_CFG + "-last") || 0); } catch {} },
+  saveCfg() { try { if (this.cfg) localStorage.setItem(SHEET_CFG, JSON.stringify(this.cfg)); else localStorage.removeItem(SHEET_CFG); } catch {} },
+  label() {
+    if (this.state === "saving" || this.state === "pending") return "Saving to Google Sheet…";
+    if (this.state === "loading") return "Loading from Google Sheet…";
+    if (this.state === "error") return "Sheet sync failed";
+    return "Saved to Google Sheet";
+  },
+  set(st, err) { this.state = st; this.error = err || ""; setSync(); if (Pop.el && Pop.stack[Pop.stack.length - 1]?.title === "Google Sheet sync") Pop.refresh(); },
+  async call(action, extra = {}) {
+    const r = await fetch(this.cfg.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify({action, key: this.cfg.key, ...extra})});
+    let j; try { j = await r.json(); } catch { throw new Error("The Sheet link did not reply. Check the Web app URL and access setting (Anyone)."); }
+    if (!j.ok) throw new Error(j.error === "wrong_key" ? "Secret key does not match the one in Apps Script." : (j.error || "Sheet error"));
+    return j;
+  },
+  schedule() { if (!this.cfg || this.state === "loading") return; clearTimeout(this.timer); this.state = "pending"; setSync(); this.timer = setTimeout(() => this.push(), 2500); },
+  async push() {
+    if (!this.cfg) return;
+    if (this.busy) { this.again = true; return; }
+    this.busy = true; this.set("saving");
+    try {
+      const savedAt = Math.max(localModified(), now());
+      await this.call("save", {state: S, savedAt});
+      this.lastSaved = savedAt; try { localStorage.setItem(SHEET_CFG + "-last", String(savedAt)); } catch {}
+      this.set("saved");
+    } catch (e) { this.set("error", e.message); }
+    finally { this.busy = false; if (this.again) { this.again = false; this.push(); } }
+  },
+  async load() { this.set("loading"); try { const j = await this.call("load"); this.set("saved"); return j; } catch (e) { this.set("error", e.message); throw e; } },
+  async startup() {
+    if (!this.cfg) return;
+    try {
+      const j = await this.load();
+      if (j.state && j.savedAt > localModified()) { replaceState(j.state, j.savedAt); toast("Loaded your latest cards from Google Sheet"); }
+      else if (!j.state || localModified() > j.savedAt) this.push();
+    } catch {}
+  }
+};
+function validState(x) { return x && x.meta && x.boards && typeof x.boards === "object" && x.cards && typeof x.cards === "object"; }
+function replaceState(next, ts) {
+  try { localStorage.setItem("cardeo-before-replace", JSON.stringify(S)); } catch {}
+  S = clone(next); ensureValid();
+  UI.composer = null; if (UI.openCardId && !S.cards[UI.openCardId]) closeModal(true);
+  if (Store.mode === "remote") { Store.mark("meta"); for (const id of Object.keys(S.boards)) Store.mark("b:" + id); for (const id of Object.keys(S.cards)) Store.mark("c:" + id); }
+  saveCache(ts);
+  renderAll();
+}
+function downloadBackup() {
+  const blob = new Blob([JSON.stringify({app: "Cardeo", version: 1, savedAt: now(), state: S}, null, 1)], {type: "application/json"});
+  const a = h("a", {href: URL.createObjectURL(blob), download: "cardeo-backup-" + ymd(new Date()) + ".json"});
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("Backup file downloaded");
+}
+async function restoreBackup() {
+  const [f] = await pickFiles(".json,application/json", false); if (!f) return;
+  try {
+    const j = JSON.parse(await f.text()); const st = j.state || j;
+    if (!validState(st)) throw new Error();
+    const n = Object.keys(st.cards).length;
+    Pop.open(null, "Restore backup?", body => body.append(
+      h("p", {style: {margin: "0 0 12px", color: "var(--muted)"}}, "This file has " + Object.keys(st.boards).length + " boards and " + n + " cards. It will replace what you see now."),
+      h("button", {class: "btn danger block", onclick: () => { Pop.close(); replaceState(st); Sheet.schedule(); toast("Backup restored"); }}, "Restore")));
+  } catch { toast("This is not a Cardeo backup file"); }
+}
+function sheetView(body) {
+  if (window.claude) body.append(h("p", {style: {margin: "0 0 10px", padding: "8px 10px", borderRadius: "6px", background: "#fff7d6", color: "#533f04", fontSize: "12px"}}, "This works in your GitHub version. Here in Claude, your cards already save online."));
+  if (!Sheet.cfg) {
+    const url = h("input", {class: "inp", placeholder: "https://script.google.com/macros/s/…/exec", autofocus: true, "aria-label": "Web app URL"});
+    const key = h("input", {class: "inp", placeholder: "Same secret key as in Apps Script", "aria-label": "Secret key"});
+    const connect = async () => {
+      const u = url.value.trim(), k = key.value.trim();
+      if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)) { toast("Paste the Web app URL from Apps Script. It starts with https://script.google.com"); return; }
+      if (!k) { key.focus(); return; }
+      Sheet.cfg = {url: u, key: k};
+      let j;
+      try { j = await Sheet.load(); } catch (e) { Sheet.cfg = null; toast(e.message); Pop.refresh(); return; }
+      Sheet.saveCfg();
+      const remoteCards = j.state ? Object.keys(j.state.cards || {}).length : 0;
+      if (j.state && remoteCards) {
+        Pop.replace("Google Sheet sync", b2 => b2.append(
+          h("p", {style: {margin: "0 0 10px"}}, "Your Sheet already has " + remoteCards + (remoteCards === 1 ? " card" : " cards") + ". Which one should Cardeo use?"),
+          h("button", {class: "btn primary block", onclick: () => { Pop.close(); replaceState(j.state, j.savedAt); toast("Loaded cards from Google Sheet"); }}, "Load cards from the Sheet"),
+          h("button", {class: "btn block", style: {marginTop: "6px"}, onclick: () => { Pop.close(); Sheet.push(); toast("Saving this browser to the Sheet"); }}, "Replace the Sheet with this browser")));
+      } else { Sheet.push(); Pop.refresh(); toast("Connected. Your cards are being saved to the Sheet."); }
+    };
+    body.append(
+      h("p", {style: {margin: "0 0 10px", color: "var(--muted)"}}, "Save every card, including archived ones, to your own Google Sheet. Your cards stay safe when the code is updated, and you can open them on any device."),
+      h("label", {class: "field"}, h("span", {}, "Web app URL"), url),
+      h("label", {class: "field"}, h("span", {}, "Secret key"), key),
+      h("button", {class: "btn primary block", onclick: connect}, "Connect"));
+  } else {
+    body.append(
+      h("div", {class: "row", style: {marginBottom: "6px"}}, h("span", {html: icon(Sheet.state === "error" ? "x" : "check"), style: {color: Sheet.state === "error" ? "var(--danger)" : "var(--ok)"}}), h("b", {}, Sheet.label())),
+      Sheet.error ? h("p", {style: {margin: "0 0 8px", color: "var(--danger)", fontSize: "12px"}}, Sheet.error) : null,
+      h("p", {style: {margin: "0 0 10px", color: "var(--muted)", fontSize: "12px"}}, Sheet.lastSaved ? "Last saved " + timeAgo(Sheet.lastSaved) + ". Changes save by themselves within a few seconds." : "Changes save by themselves within a few seconds."),
+      h("button", {class: "btn primary block", onclick: () => Sheet.push()}, "Save now"),
+      h("button", {class: "btn block", style: {marginTop: "6px"}, onclick: async () => { try { const j = await Sheet.load(); if (j.state) { replaceState(j.state, j.savedAt); toast("Loaded from Google Sheet"); } else toast("The Sheet is empty"); } catch (e) { toast(e.message); } }}, "Load from the Sheet"),
+      h("button", {class: "btn ghosty block", style: {marginTop: "6px"}, onclick: () => { Sheet.cfg = null; Sheet.saveCfg(); Sheet.state = "idle"; setSync(); Pop.refresh(); toast("Disconnected. Your Sheet is not changed."); }}, "Disconnect"));
+  }
+  body.append(h("div", {class: "pop-div"}), h("div", {class: "pop-sec"}, "Backup file"),
+    h("button", {class: "btn block", onclick: downloadBackup}, "Download backup file"),
+    h("button", {class: "btn block", style: {marginTop: "6px"}, onclick: restoreBackup}, "Restore from backup file"));
+}
+
 /* ================= boot ================= */
 function renderAll() { renderChrome(); renderBoard(); if (UI.openCardId) renderModal(); if (UI.drawer) renderDrawer(); }
 document.addEventListener("keydown", e => {
@@ -2486,6 +2599,7 @@ $("#bellBtn").addEventListener("click", () => { if (UI.drawer === "notifications
 addEventListener("resize", () => Pop.place());
 document.addEventListener("selectionchange", () => { if (RTE && RTE.updateTableBar) RTE.updateTableBar(); });
 
+Sheet.init();
 S = loadCache() || seedState();
 ensureValid();
 initSearch();
@@ -2493,6 +2607,7 @@ renderAll();
 setInterval(() => { checkReminders(); const a = document.activeElement; if (!UI.openCardId && !Drag.s && !(a && a.closest && a.closest("input, textarea, [contenteditable=true]"))) renderBoard(); }, 60000);
 setTimeout(checkReminders, 1500);
 initRemote();
+Sheet.startup();
 </script>
 </body>
 </html>
