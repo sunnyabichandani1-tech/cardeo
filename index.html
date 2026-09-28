@@ -95,15 +95,18 @@ mark{background:#f8e6a0;color:#172b4d;border-radius:2px;padding:0 1px}
 .pinned-zone:not(.has){padding:0}
 .scroll-zone{flex:1;min-width:0;display:flex;align-items:flex-start;gap:12px;padding:12px 12px 88px;overflow-x:auto;overflow-y:hidden}
 .list{flex:none;width:272px;max-height:100%;display:flex;flex-direction:column;background:var(--list);border-radius:12px;box-shadow:var(--card-shadow);color:var(--text)}
-.list-head{display:flex;align-items:center;gap:2px;padding:8px 8px 4px 12px;cursor:grab;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.list-head{flex:none;display:flex;align-items:center;gap:2px;padding:8px 8px 4px 12px;cursor:grab;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .list-title{flex:1;min-width:0;font-size:14px;font-weight:600;margin:0;padding:4px 4px;border-radius:4px;overflow-wrap:anywhere;cursor:pointer}
 .list-title-input{flex:1;min-width:0;font-weight:600;padding:3px 6px;border:2px solid var(--accent);border-radius:4px;background:var(--card)}
 .list-count{font-size:14px;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums}
 .list-flag{color:var(--muted);display:grid;place-items:center;width:22px}
 .l-btn{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
 .l-btn:hover{background:var(--btn-hover);color:var(--text)}
-.list-cards{flex:0 1 auto;min-height:4px;overflow-y:auto;padding:4px 8px;display:flex;flex-direction:column;gap:8px}
-.list-foot{display:flex;align-items:center;gap:4px;padding:4px 8px 8px}
+.list-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:4px 8px;display:flex;flex-direction:column;gap:8px}
+.list-cards::-webkit-scrollbar{width:8px}
+.list-cards::-webkit-scrollbar-thumb{background:rgba(9,30,66,.25);border-radius:4px}
+.list-cards::-webkit-scrollbar-track{background:transparent}
+.list-foot{flex:none;display:flex;align-items:center;gap:4px;padding:4px 8px 8px}
 .add-card-btn{flex:1;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:8px;color:var(--muted);font-weight:500}
 .add-card-btn:hover,.add-top-btn:hover{background:var(--btn-hover);color:var(--text)}
 .add-top-btn{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
@@ -128,7 +131,7 @@ mark{background:#f8e6a0;color:#172b4d;border-radius:2px;padding:0 1px}
 }
 
 /* ---------- cards ---------- */
-.card{position:relative;background:var(--card);border-radius:8px;box-shadow:var(--card-shadow);cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;overflow:hidden}
+.card{flex:none;position:relative;background:var(--card);border-radius:8px;box-shadow:var(--card-shadow);cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;overflow:hidden}
 .card:hover{outline:2px solid var(--accent)}
 .card-body{padding:8px 12px 6px}
 .card-cover{height:36px}
@@ -144,7 +147,7 @@ mark{background:#f8e6a0;color:#172b4d;border-radius:2px;padding:0 1px}
 .check .tick{display:none;width:16px;height:16px;border-radius:50%;background:#22a06b;color:#fff;place-items:center}
 .card.done .check .ring{display:none}
 .card.done .check .tick{display:grid}
-.card-title{flex:1;min-width:0;overflow-wrap:anywhere;padding-right:22px}
+.card-title{flex:1;min-width:0;overflow-wrap:anywhere;padding-right:32px}
 .card.done .card-title{color:var(--muted)}
 .card-badges{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px;color:var(--muted);font-size:12px}
 .card-badges:empty{display:none}
@@ -166,7 +169,7 @@ body.dragging,body.dragging *{cursor:grabbing !important}
 .list.drop-hot{outline:3px solid #fff}
 
 /* composer */
-.composer{padding:0 8px 8px}
+.composer{flex:none;padding:0 8px 8px}
 .composer-card{background:var(--card);border-radius:8px;box-shadow:var(--card-shadow);padding:8px 12px}
 .composer textarea{display:block;width:100%;border:0;outline:none;resize:none;background:transparent;min-height:40px}
 .smart{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
@@ -268,6 +271,10 @@ textarea.inp{height:auto;min-height:64px;padding:8px 10px;resize:vertical}
 .d-title:focus{outline:none;box-shadow:inset 0 0 0 2px var(--accent);background:var(--card)}
 .d-title.done{color:var(--muted)}
 .archived-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7d6;color:#533f04;padding:10px 16px}
+.done-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--ok-soft);color:var(--ok);padding:10px 16px}
+.done-banner .btn{background:rgba(9,30,66,.08);color:var(--text)}
+.head-pill{min-width:20px;height:20px;border-radius:10px;background:rgba(255,255,255,.35);display:grid;place-items:center;font-size:12px;font-weight:700;padding:0 6px}
+.bdg.done-bdg{color:var(--ok)}
 .d-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px 32px}
 .d-act{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:var(--card);font-weight:500}
 .d-act:hover{background:var(--hover)}
@@ -566,7 +573,11 @@ const board = () => S.boards[S.meta.currentBoardId];
 const byPos = (a, b) => a.pos - b.pos;
 const activeLists = b => (b.lists || []).filter(l => !l.archived).sort(byPos);
 const findList = (b, id) => (b?.lists || []).find(l => l.id === id);
-const cardsIn = listId => Object.values(S.cards).filter(c => c.listId === listId && !c.archived).sort(byPos);
+const todayStart = () => startOfDay(new Date()).getTime();
+const inCompleted = c => !!(c.complete && !c.archived && c.completedAt && startOfDay(new Date(c.completedAt)).getTime() < todayStart());
+const cardsIn = listId => Object.values(S.cards).filter(c => c.listId === listId && !c.archived && !inCompleted(c)).sort(byPos);
+const completedCards = boardId => Object.values(S.cards).filter(c => c.boardId === boardId && inCompleted(c)).sort((a, z) => (z.completedAt || 0) - (a.completedAt || 0));
+function todayList(b) { const ls = activeLists(b); return ls.find(l => /^\s*today\s*$/i.test(l.title)) || ls[0] || null; }
 function posBetween(prev, next) {
   if (prev == null && next == null) return 1024;
   if (prev == null) return next / 2;
@@ -1040,9 +1051,12 @@ function renderChrome() {
   } else nameEl = h("button", {class: "board-name", title: "Rename board", onclick: () => { UI.renamingBoard = true; renderChrome(); }}, b.name);
   const sw = h("button", {class: "views-btn", title: "Switch or create boards", "aria-label": "Switch or create boards", html: icon("board") + icon("down", "sm")});
   sw.onclick = () => openBoardSwitcher(sw);
+  const doneCount = completedCards(b.id).length;
+  const doneBtn = h("button", {class: "head-btn", title: "Completed tasks", onclick: () => openDrawer("completed")},
+    h("span", {html: icon("check")}), h("span", {class: "hide-sm"}, "Completed"), doneCount ? h("span", {class: "head-pill"}, doneCount) : null);
   const archBtn = h("button", {class: "head-btn", title: "Archived items", onclick: () => openDrawer("archive")}, h("span", {html: icon("archive")}), h("span", {class: "hide-sm"}, "Archived"));
   const menuBtn = ibtn("dots", "Board menu", () => openBoardMenu(menuBtn));
-  bar.append(nameEl, sw, h("span", {class: "spacer"}), archBtn, menuBtn);
+  bar.append(nameEl, sw, h("span", {class: "spacer"}), doneBtn, archBtn, menuBtn);
 
   const fb = $("#floatbar"); fb.innerHTML = "";
   const boardBtn = h("button", {class: "fb on", title: "Current board"}, h("span", {html: icon("board")}), h("span", {}, b.name));
@@ -1152,6 +1166,28 @@ function renderBoard() {
     if (ta) { ta.focus(); const p = caret ?? ta.value.length; ta.setSelectionRange(p, p); UI.composer.focus = false; }
   }
 }
+function keepScroll(fn) {
+  const sz = $("#scrollZone"); const sl = sz ? sz.scrollLeft : 0;
+  fn();
+  if (sz) sz.scrollLeft = sl;
+}
+function startRenameList(l, titleEl) {
+  if (Drag.justDropped || UI.editingListId === l.id || !titleEl.isConnected) return;
+  UI.editingListId = l.id;
+  const inp = h("input", {class: "list-title-input", value: l.title, "aria-label": "List title"});
+  titleEl.replaceWith(inp);
+  let closed = false;
+  const finish = save => {
+    if (closed) return; closed = true;
+    UI.editingListId = null;
+    const v = inp.value.trim();
+    if (save && v && v !== l.title) { l.title = v; saveBoard(board()); }
+    renderBoard();
+  };
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); finish(true); } if (e.key === "Escape") { e.preventDefault(); finish(false); } });
+  inp.addEventListener("blur", () => finish(true));
+  keepScroll(() => { inp.focus({preventScroll: true}); inp.select(); });
+}
 function renderList(l) {
   const cards = cardsIn(l.id);
   const openCount = cards.filter(c => !c.complete).length;
@@ -1172,14 +1208,13 @@ function renderList(l) {
   if (UI.editingListId === l.id) {
     titleEl = h("input", {class: "list-title-input", value: l.title, "aria-label": "List title"});
     const done = save => { if (UI.editingListId !== l.id) return; UI.editingListId = null; const v = titleEl.value.trim(); if (save && v && v !== l.title) { l.title = v; saveBoard(board()); } renderBoard(); };
-    titleEl.addEventListener("keydown", e => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); });
+    titleEl.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); done(true); } if (e.key === "Escape") done(false); });
     titleEl.addEventListener("blur", () => done(true));
-    setTimeout(() => { titleEl.focus(); titleEl.select(); }, 0);
+    setTimeout(() => { keepScroll(() => { titleEl.focus({preventScroll: true}); titleEl.select(); }); }, 0);
   } else {
     titleEl = h("h2", {class: "list-title", tabindex: 0, title: "Click to rename"}, l.title);
-    const edit = () => { if (Drag.justDropped) return; UI.editingListId = l.id; renderBoard(); };
-    titleEl.addEventListener("click", edit);
-    titleEl.addEventListener("keydown", e => { if (e.key === "Enter") edit(); });
+    titleEl.addEventListener("click", () => startRenameList(l, titleEl));
+    titleEl.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); startRenameList(l, titleEl); } });
   }
   const dots = ibtn("dots", "List actions", () => openListMenu(dots, l.id), "l-btn");
   const head = h("div", {class: "list-head"}, titleEl,
@@ -1209,10 +1244,11 @@ function renderCard(c) {
   if (labels.length) inner.append(h("div", {class: "card-labels"}, labels.map(l => lblEl(l))));
   const check = h("button", {class: "check", title: c.complete ? "Mark as not done" : "Mark as done", "aria-label": c.complete ? "Mark as not done" : "Mark as done",
     html: '<span class="ring"></span><span class="tick">' + icon("check", "sm") + "</span>"});
-  check.addEventListener("click", e => { e.stopPropagation(); toggleComplete(c.id); });
+  check.addEventListener("click", e => { e.stopPropagation(); toggleComplete(c.id, check); });
   inner.append(h("div", {class: "card-row"}, check, h("span", {class: "card-title"}, c.title)));
   const badges = h("div", {class: "card-badges"});
   if (isWatched(c) && c.watched) badges.append(h("span", {class: "bdg", title: "You are watching this card", html: icon("eye", "sm")}));
+  if (c.complete && c.completedAt) badges.append(h("span", {class: "bdg done-bdg", title: "Completed " + fmtDoneAt(c.completedAt)}, h("span", {html: icon("check", "sm")}), fmtTime(new Date(c.completedAt))));
   if (c.due) { const st = dueStatus(c); badges.append(h("span", {class: "bdg due " + st, title: st === "overdue" ? "Overdue" : st === "soon" ? "Due soon" : st === "done" ? "Done" : "Due date"}, h("span", {html: icon("clock", "sm")}), (c.start ? fmtShort(parseLocal(c.start)) + " to " : "") + fmtShort(parseLocal(c.due)))); }
   if (c.recurring && c.recurring !== "never") badges.append(h("span", {class: "bdg", title: "Repeats " + c.recurring, html: icon("restore", "sm")}));
   if (c.description && htmlText(c.description).trim() || /<img|<table/i.test(c.description || "")) badges.append(h("span", {class: "bdg", title: "This card has a description", html: icon("text", "sm")}));
@@ -1357,14 +1393,42 @@ function moveAllCards(from, to) {
 }
 
 /* ================= card actions ================= */
-function toggleComplete(id) {
+function toggleComplete(id, anchor) {
   const c = S.cards[id]; if (!c) return;
+  if (c.complete && inCompleted(c)) { askReopen(id, anchor); return; }
   c.complete = !c.complete; c.completedAt = c.complete ? now() : null;
   act(c, c.complete ? "marked this card as done" : "marked this card as not done");
   saveCard(c);
   if (c.complete) notify(c, "“" + c.title + "” marked as done");
   if (c.complete && c.recurring && c.recurring !== "never" && c.due) spawnRecurring(c);
-  renderBoard(); if (UI.openCardId === id) renderModal();
+  renderBoard(); renderChrome(); if (UI.drawer) renderDrawer(); if (UI.openCardId === id) renderModal();
+}
+function askReopen(id, anchor) {
+  const c = S.cards[id]; if (!c) return;
+  const b = S.boards[c.boardId]; const tl = todayList(b);
+  Pop.open(anchor || null, "Move back to " + (tl ? tl.title : "the board") + "?", body => {
+    body.append(h("p", {style: {margin: "0 0 12px", color: "var(--muted)"}},
+      "“" + c.title + "” was completed " + fmtDoneAt(c.completedAt) + ". Marking it as not done will move it back to " + (tl ? tl.title : "the board") + "."),
+      h("button", {class: "btn primary block", onclick: () => { Pop.close(); reopenCard(id); }}, "Yes, move it back"),
+      h("button", {class: "btn ghosty block", style: {marginTop: "6px"}, onclick: () => Pop.close()}, "Cancel"));
+  });
+}
+function reopenCard(id) {
+  const c = S.cards[id]; if (!c) return;
+  const b = S.boards[c.boardId]; const tl = todayList(b);
+  if (!tl) { toast("Add a list first, then move this card back"); return; }
+  c.complete = false; c.completedAt = null;
+  c.listId = tl.id; c.pos = endPos(tl.id);
+  act(c, "marked this card as not done and moved it to " + tl.title);
+  saveCard(c);
+  renderBoard(); renderChrome(); if (UI.drawer) renderDrawer(); if (UI.openCardId === id) renderModal();
+  toast("Moved back to " + tl.title);
+}
+function fmtDoneAt(ms) {
+  if (!ms) return "";
+  const d = new Date(ms); const t = startOfDay(new Date());
+  const day = sameDay(d, t) ? "today" : sameDay(d, addDays(t, -1)) ? "yesterday" : "on " + DOW[d.getDay()] + ", " + fmtShort(d);
+  return day + " at " + fmtTime(d);
 }
 function nextOccurrence(dueStr, rule) {
   const d = parseLocal(dueStr); const t = hm(d);
@@ -1389,7 +1453,7 @@ function spawnRecurring(c) {
 function archiveCard(id, silent) {
   const c = S.cards[id]; if (!c) return;
   c.archived = true; c.archivedAt = now(); act(c, "archived this card"); saveCard(c);
-  if (!silent) { renderBoard(); toast("Card archived", {label: "Undo", fn: () => restoreCard(id, true)}); if (UI.openCardId === id) renderModal(); if (UI.drawer) renderDrawer(); }
+  if (!silent) { renderBoard(); renderChrome(); toast("Card archived", {label: "Undo", fn: () => { restoreCard(id, true); renderChrome(); }}); if (UI.openCardId === id) renderModal(); if (UI.drawer) renderDrawer(); }
 }
 function archiveMany(cards) {
   const ids = cards.map(c => c.id);
@@ -1406,7 +1470,7 @@ function restoreCard(id, keepComplete, silent) {
   if (!keepComplete) { c.complete = false; c.completedAt = null; }
   c.pos = endPos(l.id);
   act(c, "sent this card back to " + l.title); saveCard(c);
-  if (!silent) { renderBoard(); if (UI.drawer) renderDrawer(); if (UI.openCardId === id) renderModal(); toast("Card sent back to " + l.title); }
+  if (!silent) { renderBoard(); renderChrome(); if (UI.drawer) renderDrawer(); if (UI.openCardId === id) renderModal(); toast("Card sent back to " + l.title); }
 }
 
 /* ================= drag and drop (mouse, touch, pen) ================= */
@@ -1574,6 +1638,10 @@ function renderModal() {
   if (c.watched) watchBtn.classList.add("on");
   const dotsBtn = ibtn("dots", "Card actions", () => Pop.open(dotsBtn, "Card actions", body => cardMenu(body, c.id)));
   dlg.append(h("div", {class: "d-top"}, listPill, h("span", {class: "spacer"}), coverBtn, watchBtn, dotsBtn, ibtn("x", "Close", () => closeModal())));
+  if (!c.archived && c.complete && c.completedAt) dlg.append(h("div", {class: "done-banner"}, h("span", {html: icon("check")}),
+    h("b", {style: {flex: 1}}, "Completed " + fmtDoneAt(c.completedAt)),
+    inCompleted(c) ? h("button", {class: "btn", onclick: e => askReopen(c.id, e.currentTarget)}, "Mark as not done") : null,
+    h("button", {class: "btn", onclick: () => archiveCard(c.id)}, h("span", {html: icon("archive", "sm")}), "Archive")));
   if (c.archived) dlg.append(h("div", {class: "archived-banner"}, h("span", {html: icon("archive")}), h("b", {style: {flex: 1}}, "This card is archived."),
     h("button", {class: "btn", onclick: () => restoreCard(c.id)}, h("span", {html: icon("restore")}), "Send to board"),
     h("button", {class: "btn danger", onclick: e => Pop.open(e.currentTarget, "Delete card?", body => { body.append(h("p", {style: {margin: "0 0 12px", color: "var(--muted)"}}, "This card will be deleted for good. This can't be undone."), h("button", {class: "btn danger block", onclick: () => { Pop.close(); deleteCardDoc(c.id); closeModal(); renderDrawer(); toast("Card deleted"); }}, "Delete")); })}, "Delete")));
@@ -1583,7 +1651,8 @@ function renderModal() {
   const main = h("div", {class: "d-main"});
   const side = h("div", {class: "d-side"});
   // title
-  const chk = h("button", {class: "d-check" + (c.complete ? " on" : ""), title: c.complete ? "Mark as not done" : "Mark as done", "aria-label": c.complete ? "Mark as not done" : "Mark as done", html: c.complete ? icon("check", "sm") : "", onclick: () => toggleComplete(c.id)});
+  const chk = h("button", {class: "d-check" + (c.complete ? " on" : ""), title: c.complete ? "Mark as not done" : "Mark as done", "aria-label": c.complete ? "Mark as not done" : "Mark as done", html: c.complete ? icon("check", "sm") : ""});
+  chk.onclick = () => toggleComplete(c.id, chk);
   const title = h("textarea", {class: "d-title" + (c.complete ? " done" : ""), rows: 1, "aria-label": "Card title"});
   title.value = c.title;
   const grow = () => { title.style.height = "auto"; title.style.height = title.scrollHeight + "px"; };
@@ -2345,6 +2414,12 @@ function feedSection(c) {
 }
 
 /* ================= drawer: archived items, notifications ================= */
+function fmtDoneDay(ms) {
+  const d = new Date(ms); const t = startOfDay(new Date());
+  if (sameDay(d, addDays(t, -1))) return "Yesterday";
+  if (sameDay(d, t)) return "Today";
+  return DOW[d.getDay()] + ", " + fmtShort(d);
+}
 function openDrawer(kind) { UI.drawer = kind; UI.archTab = UI.archTab || "cards"; renderDrawer(); }
 function closeDrawer() { UI.drawer = null; $("#drawer")?.remove(); }
 function renderDrawer() {
@@ -2354,11 +2429,39 @@ function renderDrawer() {
   const hadFocus = d && d.contains(document.activeElement) && document.activeElement.classList.contains("dr-q");
   if (!d) { d = h("aside", {id: "drawer"}); document.body.append(d); }
   d.innerHTML = "";
-  const title = UI.drawer === "archive" ? "Archived items" : "Notifications";
+  const title = UI.drawer === "archive" ? "Archived items" : UI.drawer === "completed" ? "Completed tasks" : "Notifications";
   d.append(h("div", {class: "dr-head"}, h("span"), h("h3", {}, title), ibtn("x", "Close", closeDrawer)));
   const body = h("div", {class: "dr-body"});
   d.append(body);
-  if (UI.drawer === "archive") {
+  if (UI.drawer === "completed") {
+    const b = board();
+    const q = h("input", {class: "inp dr-q", placeholder: "Search completed tasks", value: qv, "aria-label": "Search completed tasks", style: {marginBottom: "10px"}});
+    q.addEventListener("input", () => renderDrawer());
+    body.append(q);
+    if (hadFocus) setTimeout(() => { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 0);
+    const term = qv.trim().toLowerCase();
+    const all = completedCards(b.id);
+    const cards = all.filter(c => !term || c.title.toLowerCase().includes(term));
+    body.append(h("p", {style: {fontSize: "12px", color: "var(--muted)", margin: "0 0 10px"}},
+      "A task you tick stays in its list for the rest of the day. The next day it moves here."));
+    if (!cards.length) body.append(h("div", {class: "empty-note"}, term ? "No completed tasks match your search." : "Nothing here yet. Tick a task and it will show up here from tomorrow."));
+    if (all.length > 1 && !term) {
+      const archAll = h("button", {class: "btn", style: {marginBottom: "10px"}}, "Archive all completed tasks");
+      archAll.onclick = () => Pop.open(archAll, "Archive all?", bb => bb.append(h("p", {style: {margin: "0 0 12px", color: "var(--muted)"}}, all.length + " completed tasks will move to Archived. You can send them back any time."), h("button", {class: "btn danger block", onclick: () => { Pop.close(); archiveMany(all); renderChrome(); }}, "Archive all")));
+      body.append(archAll);
+    }
+    let lastDay = "";
+    for (const c of cards) {
+      const day = ymd(new Date(c.completedAt));
+      if (day !== lastDay) { lastDay = day; body.append(h("div", {class: "pop-sec", style: {margin: "10px 0 6px"}}, fmtDoneDay(c.completedAt))); }
+      body.append(h("div", {class: "arch-item"},
+        h("div", {class: "t"}, h("span", {style: {color: "var(--ok)", marginRight: "6px"}, html: icon("check", "sm")}), h("span", {onclick: () => openCard(c.id)}, c.title)),
+        h("div", {class: "s"}, "From " + listName(c) + ", completed " + fmtDoneAt(c.completedAt)),
+        h("div", {class: "row"},
+          h("button", {class: "btn primary", title: "Archive this task", onclick: () => { archiveCard(c.id); renderChrome(); }}, h("span", {html: icon("archive", "sm")}), "Archive"),
+          h("button", {class: "btn", title: "Mark as not done", onclick: e => askReopen(c.id, e.currentTarget)}, h("span", {html: icon("restore", "sm")}), "Not done"))));
+    }
+  } else if (UI.drawer === "archive") {
     const b = board();
     body.append(h("div", {class: "seg"},
       h("button", {class: UI.archTab === "cards" ? "on" : "", onclick: () => { UI.archTab = "cards"; renderDrawer(); }}, "Cards"),
@@ -2604,7 +2707,7 @@ S = loadCache() || seedState();
 ensureValid();
 initSearch();
 renderAll();
-setInterval(() => { checkReminders(); const a = document.activeElement; if (!UI.openCardId && !Drag.s && !(a && a.closest && a.closest("input, textarea, [contenteditable=true]"))) renderBoard(); }, 60000);
+setInterval(() => { checkReminders(); const a = document.activeElement; if (!UI.openCardId && !Drag.s && !(a && a.closest && a.closest("input, textarea, [contenteditable=true]"))) { renderBoard(); renderChrome(); } }, 60000);
 setTimeout(checkReminders, 1500);
 initRemote();
 Sheet.startup();
