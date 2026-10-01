@@ -150,6 +150,26 @@ mark{background:#f8e6a0;color:#172b4d;border-radius:2px;padding:0 1px}
 .card-title{flex:1;min-width:0;overflow-wrap:anywhere;padding-right:32px}
 .card.done .card-title{color:var(--muted)}
 .card-badges{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px;color:var(--muted);font-size:12px}
+/* checklist shown on the front of a card */
+.card.has-cl{box-shadow:var(--card-shadow), inset 3px 0 0 #6e5dc6}
+.card.has-cl .card-body{padding-left:15px}
+.card.cl-full{box-shadow:var(--card-shadow), inset 3px 0 0 #22a06b}
+.cc{margin-top:8px;padding:7px 9px;border-radius:6px;background:var(--btn)}
+.cc.full{background:var(--ok-soft)}
+.cc-top{display:flex;align-items:center;gap:8px}
+.cc-bar{flex:1;height:6px;border-radius:3px;background:var(--btn-hover);overflow:hidden}
+.cc-bar i{display:block;height:100%;background:#6e5dc6;border-radius:3px;transition:width .2s}
+.cc.full .cc-bar i{background:#22a06b}
+.cc-pct{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cc-sub{font-size:11px;font-weight:600;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cc-done{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#fff;background:#22a06b;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.cc-items{margin-top:6px;display:flex;flex-direction:column;gap:1px}
+.cc-group{font-size:11px;font-weight:700;color:var(--muted);margin:5px 0 1px}
+.cc-item{display:flex;align-items:flex-start;gap:7px;font-size:13px;line-height:1.35;padding:2px 0;cursor:pointer;overflow-wrap:anywhere}
+.cc-item input{width:14px;height:14px;margin:2px 0 0;accent-color:#22a06b;flex:none;cursor:pointer}
+.cc-item.on span{text-decoration:line-through;color:var(--muted)}
+.cc-more{margin-top:5px;font-size:12px;font-weight:600;color:var(--accent)}
+.cc-more:hover{text-decoration:underline}
 .card-badges:empty{display:none}
 .bdg{display:inline-flex;align-items:center;gap:4px;height:22px;border-radius:4px}
 .bdg.due{padding:0 4px}
@@ -534,7 +554,7 @@ const DEFAULT_TIME = "23:59";
 
 /* ================= state ================= */
 let S = null;                  // {meta, boards:{}, cards:{}}
-const UI = {composer: null, openCardId: null, descEditing: false, showDetails: true, drawer: null, addingList: false, editingListId: null, search: ""};
+const UI = {composer: null, openCardId: null, descEditing: false, showDetails: true, drawer: null, addingList: false, editingListId: null, search: "", clOpen: new Set()};
 
 function defaultLabels() {
   return [
@@ -568,6 +588,12 @@ function ensureValid() {
   for (const id of Object.keys(S.boards)) if (!m.boardOrder.includes(id)) m.boardOrder.push(id);
   if (!m.boardOrder.length) { const s = seedState(); const b = Object.values(s.boards)[0]; S.boards[b.id] = b; m.boardOrder = [b.id]; Store.mark("b:" + b.id); Store.mark("meta"); }
   if (!S.boards[m.currentBoardId]) m.currentBoardId = m.boardOrder[0];
+  for (const c of Object.values(S.cards)) {
+    const ls = c.checklists;
+    if (!Array.isArray(ls) || ls.length < 2) continue;
+    c.checklists = [{id: ls[0].id, title: "Checklist", hideChecked: !!ls[0].hideChecked, items: ls.flatMap(x => x.items || [])}];
+    saveCard(c);
+  }
 }
 const board = () => S.boards[S.meta.currentBoardId];
 const byPos = (a, b) => a.pos - b.pos;
@@ -1243,7 +1269,9 @@ function renderList(l) {
 }
 function renderCard(c) {
   const b = S.boards[c.boardId];
-  const el = h("div", {class: "card" + (c.complete ? " done" : ""), dataset: {card: c.id}, tabindex: 0, role: "button", "aria-label": c.title});
+  const clItems = (c.checklists || []).flatMap(x => x.items || []);
+  const clFull = clItems.length > 0 && clItems.every(i => i.done);
+  const el = h("div", {class: "card" + (c.complete ? " done" : "") + (clItems.length ? " has-cl" : "") + (clFull ? " cl-full" : ""), dataset: {card: c.id}, tabindex: 0, role: "button", "aria-label": c.title});
   const cover = coverOf(c);
   if (cover) el.append(cover.img ? h("img", {class: "card-cover img", src: cover.img, alt: ""}) : h("div", {class: "card-cover", style: {background: cover.color}}));
   const inner = h("div", {class: "card-body"});
@@ -1253,6 +1281,8 @@ function renderCard(c) {
     html: '<span class="ring"></span><span class="tick">' + icon("check", "sm") + "</span>"});
   check.addEventListener("click", e => { e.stopPropagation(); toggleComplete(c.id, check); });
   inner.append(h("div", {class: "card-row"}, check, h("span", {class: "card-title"}, c.title)));
+  const cc = cardChecklist(c);
+  if (cc) inner.append(cc);
   const badges = h("div", {class: "card-badges"});
   if (isWatched(c) && c.watched) badges.append(h("span", {class: "bdg", title: "You are watching this card", html: icon("eye", "sm")}));
   if (c.complete && c.completedAt) badges.append(h("span", {class: "bdg done-bdg", title: "Completed " + fmtDoneAt(c.completedAt)}, h("span", {html: icon("check", "sm")}), fmtTime(new Date(c.completedAt))));
@@ -1261,8 +1291,6 @@ function renderCard(c) {
   if (c.description && htmlText(c.description).trim() || /<img|<table/i.test(c.description || "")) badges.append(h("span", {class: "bdg", title: "This card has a description", html: icon("text", "sm")}));
   if (c.comments?.length) badges.append(h("span", {class: "bdg", title: "Comments"}, h("span", {html: icon("msg", "sm")}), c.comments.length));
   if (c.attachments?.length) badges.append(h("span", {class: "bdg", title: "Attachments"}, h("span", {html: icon("clip", "sm")}), c.attachments.length));
-  const items = (c.checklists || []).flatMap(x => x.items);
-  if (items.length) { const d = items.filter(i => i.done).length; badges.append(h("span", {class: "bdg cl" + (d === items.length ? " full" : ""), title: "Checklist items"}, h("span", {html: icon("checksq", "sm")}), d + "/" + items.length)); }
   if (c.location?.address) badges.append(h("span", {class: "bdg", title: c.location.address, html: icon("mappin", "sm")}));
   for (const f of b.customFields || []) {
     const v = c.custom?.[f.id];
@@ -1279,6 +1307,51 @@ function renderCard(c) {
   el.addEventListener("pointerdown", e => Drag.down(e, "card", c.id, el));
   el.addEventListener("contextmenu", e => { if (e.pointerType !== "mouse") e.preventDefault(); });
   return el;
+}
+function cardChecklist(c) {
+  const lists = (c.checklists || []).filter(x => (x.items || []).length);
+  if (!lists.length) return null;
+  const all = lists.flatMap(x => x.items);
+  const done = all.filter(i => i.done).length;
+  const pct = Math.round(done / all.length * 100);
+  const full = done === all.length;
+  const open = UI.clOpen.has(c.id);
+  const wrap = h("div", {class: "cc" + (full ? " full" : "")});
+  wrap.append(h("div", {class: "cc-top", title: done + " of " + all.length + " done"},
+    h("div", {class: "cc-bar"}, h("i", {style: {width: pct + "%"}})),
+    h("span", {class: "cc-pct"}, done + "/" + all.length),
+    full ? h("span", {class: "cc-done"}, h("span", {html: icon("check", "sm")}), "Done") : h("span", {class: "cc-sub"}, pct + "%")));
+  const rows = [];
+  for (const cl of lists) for (const it of cl.items) if (open || !it.done) rows.push({cl, it});
+  const shown = open ? rows : rows.slice(0, 3);
+  if (shown.length) {
+    const box = h("div", {class: "cc-items"});
+    let lastCl = null;
+    for (const {cl, it} of shown) {
+      if (open && lists.length > 1 && cl.id !== lastCl) { lastCl = cl.id; box.append(h("div", {class: "cc-group"}, cl.title)); }
+      const cb = h("input", {type: "checkbox", "aria-label": it.text});
+      cb.checked = it.done;
+      cb.addEventListener("click", e => e.stopPropagation());
+      cb.addEventListener("change", () => toggleCheckItem(c.id, cl.id, it.id, cb.checked));
+      const row = h("label", {class: "cc-item" + (it.done ? " on" : "")}, cb, h("span", {}, it.text));
+      row.addEventListener("click", e => e.stopPropagation());
+      box.append(row);
+    }
+    wrap.append(box);
+  }
+  if (open) wrap.append(h("button", {class: "cc-more", onclick: e => { e.stopPropagation(); UI.clOpen.delete(c.id); renderBoard(); }}, "Show less"));
+  else if (rows.length > shown.length || done) wrap.append(h("button", {class: "cc-more", onclick: e => { e.stopPropagation(); UI.clOpen.add(c.id); renderBoard(); }}, "Show all " + all.length + (all.length === 1 ? " item" : " items")));
+  return wrap;
+}
+function toggleCheckItem(cardId, clId, itemId, done) {
+  const c = S.cards[cardId]; if (!c) return;
+  const cl = (c.checklists || []).find(x => x.id === clId); if (!cl) return;
+  const it = (cl.items || []).find(x => x.id === itemId); if (!it) return;
+  it.done = done;
+  act(c, (done ? "completed " : "marked as not done ") + "“" + it.text + "” on this card");
+  saveCard(c);
+  renderBoard();
+  if (UI.openCardId === cardId) renderModal();
 }
 function coverOf(c) {
   if (!c.cover) return null;
@@ -1486,7 +1559,7 @@ const Drag = {
   s: null, justDropped: false,
   down(e, kind, id, el) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (kind === "card" && e.target.closest("button, a, input, textarea")) return;
+    if (kind === "card" && e.target.closest("button, a, input, textarea, label")) return;
     if (this.s) return;
     this.s = {kind, id, el, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, type: e.pointerType, started: false, timer: null};
     if (e.pointerType !== "mouse") this.s.timer = setTimeout(() => { if (this.s && !this.s.started) this.start(); }, 260);
@@ -1676,7 +1749,7 @@ function renderModal() {
     mk("plus", "Add", bt => Pop.open(bt, "Add to card", body => addMenu(body, c.id, bt))),
     mk("tag", "Labels", bt => Pop.open(bt, "Labels", body => labelsView(body, c.id))),
     mk("clock", "Dates", bt => Pop.open(bt, "Dates", body => datesView(body, c.id))),
-    mk("checksq", "Checklist", bt => Pop.open(bt, "Add checklist", body => checklistAddView(body, c.id))),
+    mk("checksq", "Checklist", () => openAddItem(c.id)),
     mk("clip", "Attachment", bt => Pop.open(bt, "Attach", body => attachView(body, c.id), {wide: true}))
   );
   main.append(acts);
@@ -1716,7 +1789,7 @@ function renderModal() {
   // attachments
   if (c.attachments?.length) main.append(attachmentsSection(c));
   // checklists
-  for (const cl of c.checklists || []) main.append(checklistSection(c, cl));
+  const clSec = checklistSection(c); if (clSec) main.append(clSec);
   // side: comments + activity
   side.append(feedSection(c));
   dlg.append(h("div", {class: "d-grid"}, main, side));
@@ -1735,7 +1808,7 @@ function addMenu(body, cardId, anchor) {
   body.append(
     item("tag", "Labels", "Organise, group and prioritise", () => go("Labels", labelsView)),
     item("clock", "Dates", "Start dates, due dates and reminders", () => go("Dates", datesView)),
-    item("checksq", "Checklist", "Add sub tasks", () => go("Add checklist", checklistAddView)),
+    item("checksq", "Checklist", "Add tasks to close this card", () => { Pop.close(); openAddItem(cardId); }),
     item("user", "Members", "Coming after the first version", null, true),
     item("clip", "Attachment", "Add files and links", () => go("Attach", attachView, true)),
     item("mappin", "Location", "Save a place and open it on a map", () => go("Location", locationView)),
@@ -1887,80 +1960,76 @@ function datesView(body, cardId) {
 }
 
 /* ---------- Checklists ---------- */
-function checklistAddView(body, cardId) {
-  const t = h("input", {class: "inp", value: "Checklist", autofocus: true, "aria-label": "Checklist title"});
-  setTimeout(() => t.select(), 0);
-  const sources = [];
-  for (const cc of Object.values(S.cards)) if (cc.boardId === S.meta.currentBoardId && !cc.archived) for (const cl of cc.checklists || []) if (cl.items.length) sources.push({label: cc.title + ": " + cl.title, cl});
-  const sel = h("select", {class: "inp", "aria-label": "Copy items from"}, h("option", {value: ""}, "(none)"), sources.map((s, i) => h("option", {value: i}, s.label)));
-  const add = () => {
-    let newId;
-    withCard(cardId, c => {
-      const src = sel.value !== "" ? sources[+sel.value].cl : null;
-      newId = uid();
-      c.checklists.push({id: newId, title: t.value.trim() || "Checklist", hideChecked: false, items: src ? src.items.map(i => ({id: uid(), text: i.text, done: false})) : []});
-      act(c, "added checklist " + (t.value.trim() || "Checklist"));
-    });
-    Pop.close();
-    UI.addingItemTo = newId; renderModal();
-    setTimeout(() => $('[data-cl="' + newId + '"] .cl-new')?.scrollIntoView({block: "center"}), 30);
-  };
-  t.addEventListener("keydown", e => { if (e.key === "Enter") add(); });
-  body.append(h("label", {class: "field"}, h("span", {}, "Title"), t), h("label", {class: "field"}, h("span", {}, "Copy items from…"), sel), h("button", {class: "btn primary", onclick: add}, "Add"));
+function cardChecklistObj(c, create) {
+  if (!Array.isArray(c.checklists)) c.checklists = [];
+  if (!c.checklists.length) {
+    if (!create) return null;
+    c.checklists.push({id: uid(), title: "Checklist", hideChecked: false, items: []});
+  }
+  return c.checklists[0];
 }
-function checklistSection(c, cl) {
+function openAddItem(cardId) {
+  const c = S.cards[cardId]; if (!c) return;
+  const cl = cardChecklistObj(c, true);
+  saveCard(c);
+  UI.addingItemTo = cl.id;
+  renderModal();
+  setTimeout(() => $(".cl-new")?.scrollIntoView({block: "center"}), 30);
+}
+function checklistSection(c) {
+  const cl = c.checklists && c.checklists[0];
+  if (!cl) return null;
+  const adding = UI.addingItemTo === cl.id;
+  if (!cl.items.length && !adding) return null;
   const done = cl.items.filter(i => i.done).length, total = cl.items.length;
   const pct = total ? Math.round(done / total * 100) : 0;
   const wrap = h("div", {class: "cl", dataset: {cl: cl.id}});
-  let titleEl;
-  if (UI.editingCl === cl.id) {
-    titleEl = h("input", {class: "inp", value: cl.title, style: {flex: 1}});
-    const fin = save => { if (UI.editingCl !== cl.id) return; UI.editingCl = null; if (save && titleEl.value.trim()) withCard(c.id, cc => { cc.checklists.find(x => x.id === cl.id).title = titleEl.value.trim(); }); else renderModal(); };
-    titleEl.addEventListener("keydown", e => { if (e.key === "Enter") fin(true); if (e.key === "Escape") fin(false); });
-    titleEl.addEventListener("blur", () => fin(true));
-    setTimeout(() => { titleEl.focus(); titleEl.select(); }, 0);
-  } else titleEl = h("h3", {style: {flex: 1, margin: 0, fontSize: "16px", cursor: "pointer"}, title: "Click to rename", onclick: () => { UI.editingCl = cl.id; renderModal(); }}, cl.title);
-  const delBtn = h("button", {class: "btn"}, "Delete");
-  delBtn.onclick = () => Pop.open(delBtn, "Delete " + cl.title + "?", body => { body.append(h("p", {style: {margin: "0 0 12px", color: "var(--muted)"}}, "Deleting a checklist is permanent and there is no way to get it back."), h("button", {class: "btn danger block", onclick: () => { Pop.close(); withCard(c.id, cc => { cc.checklists = cc.checklists.filter(x => x.id !== cl.id); act(cc, "removed checklist " + cl.title); }); }}, "Delete checklist")); });
-  wrap.append(h("div", {class: "sec-h"}, h("span", {class: "ic", html: icon("checksq", "lg")}), titleEl,
-    done ? h("button", {class: "btn", onclick: () => withCard(c.id, cc => { const x = cc.checklists.find(y => y.id === cl.id); x.hideChecked = !x.hideChecked; })}, cl.hideChecked ? "Show checked items (" + done + ")" : "Hide checked items") : null,
-    delBtn));
+  const clearBtn = total ? h("button", {class: "btn"}, "Clear") : null;
+  if (clearBtn) clearBtn.onclick = () => Pop.open(clearBtn, "Clear the checklist?", body => {
+    body.append(h("p", {style: {margin: "0 0 12px", color: "var(--muted)"}}, "All " + total + (total === 1 ? " task" : " tasks") + " on this card will be removed. This can't be undone."),
+      h("button", {class: "btn danger block", onclick: () => { Pop.close(); withCard(c.id, cc => { cc.checklists = []; act(cc, "cleared the checklist"); }); }}, "Clear checklist"));
+  });
+  wrap.append(h("div", {class: "sec-h"}, h("span", {class: "ic", html: icon("checksq", "lg")}),
+    h("h3", {style: {flex: 1, margin: 0, fontSize: "16px"}}, "Checklist"),
+    done ? h("button", {class: "btn", onclick: () => withCard(c.id, cc => { const x = cardChecklistObj(cc); x.hideChecked = !x.hideChecked; })}, cl.hideChecked ? "Show done tasks (" + done + ")" : "Hide done tasks") : null,
+    clearBtn));
   const body = h("div", {class: "sec-b"});
-  body.append(h("div", {class: "cl-prog"}, h("span", {}, pct + "%"), h("div", {class: "bar"}, h("i", {class: pct === 100 ? "full" : "", style: {width: pct + "%"}}))));
-  if (cl.hideChecked && done === total && total) body.append(h("p", {style: {color: "var(--muted)", margin: "4px 0"}}, "Everything in this checklist is done!"));
+  if (total) body.append(h("div", {class: "cl-prog"}, h("span", {}, pct + "%"), h("div", {class: "bar"}, h("i", {class: pct === 100 ? "full" : "", style: {width: pct + "%"}}))));
+  if (cl.hideChecked && done === total && total) body.append(h("p", {style: {color: "var(--muted)", margin: "4px 0"}}, "Every task on this card is done!"));
   for (const it of cl.items) {
     if (cl.hideChecked && it.done) continue;
     const row = h("div", {class: "cl-item" + (it.done ? " checked" : "")});
     const cb = h("input", {type: "checkbox", "aria-label": it.text}); cb.checked = it.done;
-    cb.onchange = () => withCard(c.id, cc => { const x = cc.checklists.find(y => y.id === cl.id).items.find(y => y.id === it.id); x.done = cb.checked; act(cc, (x.done ? "completed " : "marked as not done ") + "“" + x.text + "” on this card"); });
+    cb.onchange = () => withCard(c.id, cc => { const x = cardChecklistObj(cc).items.find(y => y.id === it.id); x.done = cb.checked; act(cc, (x.done ? "completed " : "marked as not done ") + "\u201c" + x.text + "\u201d on this card"); });
     if (UI.editingItem === it.id) {
       const ta = h("textarea", {class: "inp", rows: 2}); ta.value = it.text;
-      const fin = save => { if (UI.editingItem !== it.id) return; UI.editingItem = null; const v = ta.value.trim(); if (save && v) withCard(c.id, cc => { cc.checklists.find(y => y.id === cl.id).items.find(y => y.id === it.id).text = v; }); else renderModal(); };
+      const fin = save => { if (UI.editingItem !== it.id) return; UI.editingItem = null; const v = ta.value.trim(); if (save && v) withCard(c.id, cc => { cardChecklistObj(cc).items.find(y => y.id === it.id).text = v; }); else renderModal(); };
       ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); fin(true); } if (e.key === "Escape") fin(false); });
       setTimeout(() => { ta.focus(); ta.select(); }, 0);
       row.append(cb, h("div", {style: {flex: 1}}, ta, h("div", {class: "row", style: {marginTop: "6px"}}, h("button", {class: "btn primary", onmousedown: e => e.preventDefault(), onclick: () => fin(true)}, "Save"), h("button", {class: "btn ghosty", onmousedown: e => e.preventDefault(), onclick: () => fin(false)}, "Cancel"))));
     } else {
-      const more = ibtn("dots", "Item actions", () => Pop.open(more, "Item actions", bb => bb.append(
-        popItem("move", "Convert to card", "Makes a new card in the same list", () => {
+      const more = ibtn("dots", "Task actions", () => Pop.open(more, "Task actions", bb => bb.append(
+        popItem("edit", "Edit task", null, () => { Pop.close(); UI.editingItem = it.id; renderModal(); }),
+        popItem("move", "Turn into its own card", "Makes a new card in the same list", () => {
           Pop.close();
           const cc = S.cards[c.id]; const n = makeCard(cc.boardId, cc.listId, it.text, cc.pos + 0.5);
-          act(n, "created from a checklist item on “" + cc.title + "”"); S.cards[n.id] = n; saveCard(n);
-          withCard(c.id, x => { x.checklists.find(y => y.id === cl.id).items = x.checklists.find(y => y.id === cl.id).items.filter(y => y.id !== it.id); });
+          act(n, "created from a checklist task on \u201c" + cc.title + "\u201d"); S.cards[n.id] = n; saveCard(n);
+          withCard(c.id, x => { const l = cardChecklistObj(x); l.items = l.items.filter(y => y.id !== it.id); });
           toast("Card created");
         }),
-        popItem("trash", "Delete item", null, () => { Pop.close(); withCard(c.id, x => { const l = x.checklists.find(y => y.id === cl.id); l.items = l.items.filter(y => y.id !== it.id); }); })
+        popItem("trash", "Delete task", null, () => { Pop.close(); withCard(c.id, x => { const l = cardChecklistObj(x); l.items = l.items.filter(y => y.id !== it.id); }); })
       )));
       row.append(cb, h("span", {class: "txt", onclick: () => { UI.editingItem = it.id; renderModal(); }}, it.text), more);
     }
     body.append(row);
   }
-  if (UI.addingItemTo === cl.id) {
-    const ta = h("textarea", {class: "inp cl-new", rows: 2, placeholder: "Add an item"});
-    const add = () => { const v = ta.value.trim(); if (!v) { ta.focus(); return; } withCard(c.id, cc => cc.checklists.find(y => y.id === cl.id).items.push({id: uid(), text: v, done: false})); setTimeout(() => $('[data-cl="' + cl.id + '"] .cl-new')?.focus(), 0); };
+  if (adding) {
+    const ta = h("textarea", {class: "inp cl-new", rows: 2, placeholder: "Add a task"});
+    const add = () => { const v = ta.value.trim(); if (!v) { ta.focus(); return; } withCard(c.id, cc => cardChecklistObj(cc, true).items.push({id: uid(), text: v, done: false})); setTimeout(() => $(".cl-new")?.focus(), 0); };
     ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); add(); } if (e.key === "Escape") { UI.addingItemTo = null; renderModal(); } });
     setTimeout(() => ta.focus(), 0);
-    body.append(ta, h("div", {class: "row", style: {marginTop: "6px"}}, h("button", {class: "btn primary", onclick: add}, "Add"), h("button", {class: "btn ghosty", onclick: () => { UI.addingItemTo = null; renderModal(); }}, "Cancel"), h("span", {style: {fontSize: "12px", color: "var(--muted)"}}, "Press Enter to add the next item")));
-  } else body.append(h("button", {class: "btn", style: {marginTop: "6px"}, onclick: () => { UI.addingItemTo = cl.id; renderModal(); }}, "Add an item"));
+    body.append(ta, h("div", {class: "row", style: {marginTop: "6px"}}, h("button", {class: "btn primary", onclick: add}, "Add"), h("button", {class: "btn ghosty", onclick: () => { UI.addingItemTo = null; renderModal(); }}, "Cancel"), h("span", {style: {fontSize: "12px", color: "var(--muted)"}}, "Press Enter to add the next task")));
+  } else body.append(h("button", {class: "btn", style: {marginTop: "6px"}, onclick: () => openAddItem(c.id)}, "Add a task"));
   wrap.append(body);
   return wrap;
 }
